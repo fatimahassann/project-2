@@ -7,6 +7,7 @@
 using namespace std;
 
 void simulate(unsigned short);
+void set_flags(unsigned int cpsr);
 
 
 unsigned char Mem[1024];
@@ -23,6 +24,9 @@ B, S, sword7, R, Rlist,
 cond, soffset8, value8, offset11, H, offset, cpsr, sign;
 int temp;
 
+unsigned int N,Z,C,V; // condition flags: Negative, Zero, Carry-Unsigned overflow, Signed Overflow
+
+
 void format1_2(unsigned short instr)
 {
     op = (instr >> 11) & 0x3;
@@ -30,7 +34,7 @@ void format1_2(unsigned short instr)
     rs = (instr >>  3) & 0x7;
     offset5 = (instr >> 6) & 0x1F;
     
-    if((offset5>>4)==1)
+    if((offset5>>4)==1) //sign extension for asr
     {
         temp=0x7ffffff;
         temp=temp<<5;
@@ -43,18 +47,21 @@ void format1_2(unsigned short instr)
         case 0: //format 1
             printf("LSL\tr%d, r%d, #%d", rd, rs, offset5);
             Regs[rd] = Regs[rs] << offset5;
+            set_flags(Regs[rd]);
             cout<<"\t\t---> r"<<rd<<" = "<<Regs[rd]<<endl;
             break;
             
         case 1:
             printf("LSR\tr%d, r%d, #%d", rd, rs, offset5);
             Regs[rd] = Regs[rs] >> offset5;
+            set_flags(Regs[rd]);
             cout<<"\t\t---> r"<<rd<<" = "<<Regs[rd]<<endl;
             break;
             
         case 2:
             printf("ASR\tr%d, r%d, #%d", rd, rs, offset5);
             Regs[rd] = Regs[rs] >> offset5;
+            set_flags(Regs[rd]);
             cout<<"\t\t---> r"<<rd<<" = "<<Regs[rd]<<endl;
             break;
             
@@ -66,12 +73,14 @@ void format1_2(unsigned short instr)
                 {
                     printf("r%d", rn);
                     Regs[rd] = Regs[rs] + Regs[rn];
+                    set_flags(Regs[rd]);
                     cout<<"\t\t---> r"<<rd<<" = "<<Regs[rd]<<endl;
                 }
                 else
                 {
                     printf("#%d", offset3);
                     Regs[rd] = Regs[rs] + offset3;
+                    set_flags(Regs[rd]);
                     cout<<"\t\t---> r"<<rd<<" = "<<Regs[rd]<<endl;
                 }
             }
@@ -82,17 +91,21 @@ void format1_2(unsigned short instr)
                 {
                     printf("r%d", rn);
                     Regs[rd] = Regs[rs] - Regs[rn];
+                    set_flags(Regs[rd]);
                     cout<<"\t\t---> r"<<rd<< " = "<<Regs[rd]<<endl;
                 }
                 else
                 {
                     printf("#%d", offset3);
                     Regs[rd] = Regs[rs] - offset3;
+                    set_flags(Regs[rd]);
                     cout<<"\t\t---> r"<<rd<<" = "<<Regs[rd]<<endl;
                 }
             }
             break;
-    }
+            }
+    
+    
     
 }
 //----------------------------------------------------------
@@ -106,21 +119,25 @@ void format3(unsigned short instr)
         case 0:
             cout << "MOV\tr" << rd << ", #" << offset8;
             Regs[rd] = offset8;
+            set_flags(Regs[rd]);
             cout<<"\t\t---> r"<<rd<<" = "<<Regs[rd]<<endl;
             break;
         case 1:
             cout << "CMP\tr" << rd << ", #" << offset8;
             cpsr=Regs[rd]-offset8;
+            set_flags(cpsr);
             cout<<"\t\t\t---> r"<<rd<<" = "<<Regs[rd]<<endl;
             break;
         case 2:
             cout << "ADD\tr"<< rd << ", #" << offset8;
             Regs[rd] += offset8;
+            set_flags(Regs[rd]);
             cout<<"\t\t---> r"<<rd<<" = "<<Regs[rd]<<endl;
             break;
         case 3:
             cout << "SUB\tr"<< rd << ", #" << offset8;
             Regs[rd] -= offset8;
+            set_flags(Regs[rd]);
             cout<<"\t\t---> r"<<rd<<" = "<<Regs[rd]<<endl;
             break;
     }
@@ -141,40 +158,46 @@ void format4_8(unsigned short instr)
                     case 0:
                         cout << "AND\tr" << rd << ", r" << rs;
                         Regs[rd] = Regs[rd] & Regs[rs];
+                        set_flags(Regs[rd]);
                         cout<<"\t\t\t---> r"<<rd<<" = "<<Regs[rd]<<endl;
                         break;
                         
                     case 1:
                         cout << "EOR\tr" << rd << ", r"<< rs;
                         Regs[rd]= Regs[rd]^Regs[rs];
+                        set_flags(Regs[rd]);
                         cout<<"\t\t\t---> r"<<rd<<" = "<<Regs[rd]<<endl;
                         break;
                         
                     case 2:
                         cout << "LSL\tr" << rd << ", r"<< rs;
                         Regs[rd]= Regs[rd] << Regs[rs];
+                        set_flags(Regs[rd]);
                         cout<<"\t\t---> r"<<rd<<" = "<<Regs[rd]<<endl;
                         break;
                         
                     case 3:
                         cout << "LSR\tr" << rd << ", r"<< rs;
                         Regs[rd]= Regs[rd] >> Regs[rs];
+                        set_flags(Regs[rd]);
                         cout<<"\t\t---> r"<<rd<<" = "<<Regs[rd]<<endl;
                         break;
                         
                     case 4:
                         cout << "ASR\tr" << rd << ", r"<< rs;
                         Regs[rd]= Regs[rd] >>Regs[rs];
+                        set_flags(Regs[rd]);
                         cout<<"\t\t\t---> r"<<rd<<" = "<<Regs[rd]<<endl;
                         break;
                         
                     case 5:
-                        cout << "ADC\tr" << rd << ", r"<< rs;
+                        cout << "ADC\tr" << rd << ", r"<< rs;//*******
                         Regs[rd]= Regs[rd] + Regs[rs] ;
                         int c;
                         c=~(Regs[rd] | 0);
                         c=c>>15 & 1;
                         Regs[rd]=Regs[rd]+c;
+                        set_flags(Regs[rd]);
                         cout<<"\t\t\t---> r"<<rd<<" = "<<Regs[rd]<<endl;
                         break;
                         
@@ -184,59 +207,68 @@ void format4_8(unsigned short instr)
                         c=~(Regs[rd] | 0);
                         c=c>>15 & 1;
                         Regs[rd]=Regs[rd]-c;
+                        set_flags(Regs[rd]);
                         cout<<"\t\t\t---> r"<<rd<<" = "<<Regs[rd]<<endl;
                         break;
                         
                     case 7:
-                        cout << "ROR\tr" << rd << ", r"<< rs;
+                        cout << "ROR\tr" << rd << ", r"<< rs;//*********
                         Regs[rd]=(Regs[rd]>>Regs[rs]) | (Regs[rd]<<(16-Regs[rs]));
+                        set_flags(Regs[rd]);
                         cout<<"\t\t\t---> r"<<rd<<" = "<<Regs[rd]<<endl;
                         break;
                         
                         
                     case 8:
                         cout << "TST\tr" << rd << ", r" << rs<<endl;
-                        cpsr=Regs[rd]&Regs[rs];
+                        cpsr=Regs[rd]&Regs[rs];//********************************
+                        set_flags(cpsr);
                         break;
                         
                     case 9:
                         cout << "NEG\tr" << rd << ", r"<< rs;
                         Regs[rd] = - Regs[rs];
+                        set_flags(Regs[rd]);
                         cout<<"\t\t\t---> r"<<rd<<" = "<<Regs[rd]<<endl;
                         break;
                         
                     case 10:
-                        cout << "CMP\tr" << rd << ", r"<< rs<<endl;
+                        cout << "CMP\tr" << rd << ", r"<< rs<<endl;//**
                         cpsr=Regs[rd]-Regs[rs];
-                        
+                        set_flags(cpsr);
                         break;
                         
                     case 11:
                         cout << "CMN\tr" << rd << ", r" << rs<<endl;
                         cpsr=Regs[rd]+Regs[rs];
+                        set_flags(cpsr);
                         break;
                         
                     case 12:
                         cout << "ORR\tr" << rd << ", r"<< rs;
                         Regs[rd] = Regs[rd]|Regs[rs];
+                        set_flags(Regs[rd]);
                         cout<<"\t\t\t---> r"<<rd<<" = "<<Regs[rd]<<endl;
                         break;
                         
                     case 13:
                         cout << "MUL\tr" << rd << ", r" << rs;
                         Regs[rd] = Regs[rd] * Regs[rs];
+                        set_flags(Regs[rd]);
                         cout<<"\t\t\t---> r"<<rd<<" = "<<Regs[rd]<<endl;
                         break;
                         
                     case 14:
                         cout << "BIC\tr" << rd << ", r" << rs;
                         Regs[rd]= Regs[rd] & ~(Regs[rs]);
+                        set_flags(Regs[rd]);
                         cout<<"\t\t\t---> r"<<rd<<" = "<<Regs[rd]<<endl;
                         break;
                         
                     case 15:
                         cout << "MVN\tr" << rd << ", r" << rs;
                         Regs[rd] = ~Regs[rs];
+                        set_flags(Regs[rd]);
                         cout<<"\t\t\t---> r"<<rd<<" = "<<Regs[rd]<<endl;
                         break;
                 }
@@ -326,7 +358,8 @@ void format4_8(unsigned short instr)
             rd=(instr>>8)&0x7;
             word8= instr & 0xFF;
             cout << "LDR\tr" << rd << ", [PC, #" << word8<< "]";
-            Regs[rd]= PC + word8;
+            if((PC+word8)<0)
+            Regs[rd]= Mem[PC + word8];
             cout<<"\t\t---> r"<<rd<<" = "<<Regs[rd]<<endl;
             break;
             
@@ -346,7 +379,7 @@ void format4_8(unsigned short instr)
                         cout << "STR\tr" << rd << ", [r" << rb << ", r" << ro << "]"<<endl;
                         int x = Regs[rb]+Regs[ro];
                         if(x<1024)
-                            Mem[x]= Regs[rd];
+                        Mem[x]= Regs[rd];
                         
                     }
                     else
@@ -373,6 +406,10 @@ void format4_8(unsigned short instr)
                         if(x<1024)
                             Regs[rd]=Mem[x]&0xFF;
                         cout<<"\t\t---> r"<<rd<<" = "<<Regs[rd]<<endl;
+                        
+                        
+                        
+                        //Regs[rd] = (memory[(regs[rs1] + I_imm)] & 0xFF);
                     }
                 }
             }
@@ -509,7 +546,7 @@ void format12_14(unsigned short instr)
         if(SP==0)
         {
             cout<<"ADD\tr"<<rd<<", "<< PC << ", #" << word8;
-        }
+            }
         else
         {
             cout<< "ADD\tr" << rd << ", " << SP << ", #" << word8;
@@ -526,17 +563,17 @@ void format12_14(unsigned short instr)
             
             if(S==0)
             {
-                cout<< "ADD\tSP , #" << sword7;
+                cout<< "ADD\tr" << SP << ", #" << sword7;
                 SP=SP+sword7;
-                cout<<"\t\t\t---> SP= "<< SP <<endl;
+                cout<<"\t\t ---> SP = "<<SP<<endl;
                 
             }
             else
             {
                 sword7= - sword7;
-                cout<< "ADD\tSP , #" << sword7;
+                cout<< "ADD\tr" << SP << ", #" << sword7;
                 SP=SP+sword7;
-                cout<<"\t\t\t---> SP= "<< SP <<endl;
+                cout<<"\t\t ---> SP = "<<SP<<endl;
             }
         }
         else
@@ -561,7 +598,8 @@ void format12_14(unsigned short instr)
                     cout <<"r"<< x << " ";
                     SP--;
                 }
-                cout<<"}\n";
+                cout<<"}";
+                cout<<"\t\t ---> SP = "<<SP<<endl;
             }
             else if(L==0 && R == 1)
             {
@@ -571,8 +609,9 @@ void format12_14(unsigned short instr)
                     cout <<"r"<< x << " ";
                     SP--;
                 }
-                cout<<"LR }\n";
+                cout<<"LR }";
                 SP--;
+                cout<<"\t\t---> SP = "<<SP<<endl;
                 
             }
             else if(L==1 && R == 0 && ((instr>>12)&0xF)==11)
@@ -583,7 +622,8 @@ void format12_14(unsigned short instr)
                     cout <<"r"<< x << " ";
                     SP++;
                 }
-                cout<<"}\n";
+                cout<<"} ";
+                cout<<"\t\t ---> SP = "<<SP<<endl;
             }
             else
             {
@@ -593,8 +633,9 @@ void format12_14(unsigned short instr)
                     cout <<"r"<< x << " ";
                     SP++;
                 }
-                cout<<"PC }\n";
+                cout<<"PC }";
                 SP++;
+                cout<<"\t\t ---> SP = "<<SP<<endl;
             }
             
         }
@@ -604,7 +645,7 @@ void format12_14(unsigned short instr)
 //----------------------------------------------------------
 void format15_17(unsigned short instr)
 {
-    if (((instr>> 12)& 0x1)==0)// format 15 ( no implementation)
+    if (((instr>> 12)& 0x1)==0)// format 15 ( no implementation) //rlist fix
     {
         
         Rlist=instr&0xFF;
@@ -623,127 +664,127 @@ void format15_17(unsigned short instr)
         
         cout<<"\t\tFORMAT 15\n";
     }
-    else
-    {
-        cond=(instr>>8)&0xF;
-        value8=instr & 0xFF;
-        soffset8=instr & 0xFF;
-        if(cond==0xF)//format 17
-        {
-            // reference: https://www.lri.fr/~de/ARM-Tutorial.pdf
-            cout << "SWI\t" << value8;
-            switch(value8)
-            {
-                case 0x6c: // Read int
-                    int integer;
-                    cin>>integer;
-                    Regs[0]=integer;
-                    break;
-                    
-                case 0x6a:
-                    if(Regs[2]==1) // Read Char
-                    {
-                        char my_character;
-                        cin>>my_character;
-                        Regs[0]=my_character; // char stored in R0
-                    }
-                    else // Read String
-                    {
-                        string my_string;
-                        string null_term = "\n";
-                        cin>>my_string;// read string
-                        my_string=my_string.substr(0,Regs[2]);//R2 represents max number of bytes to store in memory
-                        my_string=my_string.append(null_term);//null byte terminator stored at the end
-                        Regs[0]=my_string.length();//number of bytes stored in memory is returned to R0
-                    }
-                    break;
-                    
-                case 0x02: // print str
-                    cout<<"\t\t\tString = "<<Regs[0]<<endl;//R0 is the address of a Null terminated ASCII string
-                    break;
-                    
-                case 0x00: // Display Character
-                    cout<<"\t\t\tChar = "<<Regs[0]<<endl;//R0 is the character
-                    break;
-                    
-                case 0x11: // Terminate
-                    abort();
-                    break;
-                    
-                default:
-                    cout<<"\t\t\tUNKNOWN SWI CODE\n";
-            }
-        }
         else
         {
-            if(cond==0b1110)
+            cond=(instr>>8)&0xF;
+            value8=instr & 0xFF;
+            soffset8=instr & 0xFF;
+            if(cond==0xF)//format 17
             {
-                cout<<"undefined instruction word"<<endl;//undef
-            }
-            else //format 16
-            {
-                switch(cond){
+                // reference: https://www.lri.fr/~de/ARM-Tutorial.pdf
+                cout << "SWI\t" << value8;
+                switch(value8)
+                {
+                    case 0x6c: // Read int
+                        int integer;
+                        cin>>integer;
+                        Regs[0]=integer;
+                        break;
                         
-                    case 0:
-                        cout<< "BEQ\t"<< soffset8<<endl;
-                        PC= PC+soffset8-2;
+                    case 0x6a:
+                        if(Regs[2]==1) // Read Char
+                        {
+                            char my_character;
+                            cin>>my_character;
+                            Regs[0]=my_character; // char stored in R0
+                        }
+                        else // Read String
+                        {
+                            string my_string;
+                            string null_term = "\n";
+                            cin>>my_string;// read string
+                            my_string=my_string.substr(0,Regs[2]);//R2 represents max number of bytes to store in memory
+                            my_string=my_string.append(null_term);//null byte terminator stored at the end
+                            Regs[0]=my_string.length();//number of bytes stored in memory is returned to R0
+                        }
                         break;
-                    case 1:
-                        cout<< "BNE\t"<< soffset8<<endl;
-                        PC=PC+ soffset8-2;
+                        
+                    case 0x02: // print str
+                        cout<<"\t\t\tString = "<<Regs[0]<<endl;//R0 is the address of a Null terminated ASCII string
                         break;
-                    case 2:
-                        cout<< "BCS\t"<< soffset8<<endl;
-                        PC=PC+ soffset8-2;
+                        
+                    case 0x00: // Display Character
+                        cout<<"\t\t\tChar = "<<Regs[0]<<endl;//R0 is the character
                         break;
-                    case 3:
-                        cout<< "BCC\t"<< soffset8<<endl;
-                        PC=PC+ soffset8 -2;
+
+                    case 0x11: // Terminate
+                        exit(0);
                         break;
-                    case 4:
-                        cout<< "BMI\t"<< soffset8<<endl;
-                        PC=PC+ soffset8-2;
-                        break;
-                    case 5:
-                        cout<< "BPL\t"<< soffset8<<endl;
-                        PC=PC+ soffset8-2;
-                        break;
-                    case 6:
-                        cout<< "BVS\t"<< soffset8<<endl;
-                        PC=PC+ soffset8-2;
-                        break;
-                    case 7:
-                        cout<< "BVC\t"<< soffset8<<endl;
-                        PC=PC+ soffset8-2;
-                        break;
-                    case 8:
-                        cout<< "BHI\t"<< soffset8<<endl;
-                        PC=PC+ soffset8-2;
-                        break;
-                    case 9:
-                        cout<< "BLS\t"<< soffset8<<endl;
-                        PC=PC+ soffset8-2;
-                        break;
-                    case 10:
-                        cout<< "BGE\t"<< soffset8<<endl;
-                        PC=PC+ soffset8-2;
-                        break;
-                    case 11 :
-                        cout<< "BLT\t"<< soffset8<<endl;
-                        PC=PC+ soffset8-2;
-                        break;
-                    case 12:
-                        cout<< "BGT\t"<< soffset8<<endl;
-                        PC=PC+ soffset8-2;
-                        break;
-                    case 13:
-                        cout<< "BLE\t"<< soffset8<<endl;
-                        PC=PC+ soffset8-2;
-                        break;
+                        
+                    default:
+                        cout<<"\t\t\tUNKNOWN SWI CODE\n";
+                }
+            }
+            else
+            {
+                if(cond==0b1110)
+                {
+                    cout<<"Cond = 1110 is undefined, and should not be used"<<endl;//undef
+                }
+                else //format 16
+                {
+                    switch(cond){
+                            
+                        case 0:
+                            cout<< "BEQ\t"<< soffset8<<endl;
+                            PC= PC+soffset8-2;
+                            break;
+                        case 1:
+                            cout<< "BNE\t"<< soffset8<<endl;
+                            PC=PC+ soffset8-2;
+                            break;
+                        case 2:
+                            cout<< "BCS\t"<< soffset8<<endl;
+                            PC=PC+ soffset8-2;
+                            break;
+                        case 3:
+                            cout<< "BCC\t"<< soffset8<<endl;
+                            PC=PC+ soffset8 -2;
+                            break;
+                        case 4:
+                            cout<< "BMI\t"<< soffset8<<endl;
+                            PC=PC+ soffset8-2;
+                            break;
+                        case 5:
+                            cout<< "BPL\t"<< soffset8<<endl;
+                            PC=PC+ soffset8-2;
+                            break;
+                        case 6:
+                            cout<< "BVS\t"<< soffset8<<endl;
+                            PC=PC+ soffset8-2;
+                            break;
+                        case 7:
+                            cout<< "BVC\t"<< soffset8<<endl;
+                            PC=PC+ soffset8-2;
+                            break;
+                        case 8:
+                            cout<< "BHI\t"<< soffset8<<endl;
+                            PC=PC+ soffset8-2;
+                            break;
+                        case 9:
+                            cout<< "BLS\t"<< soffset8<<endl;
+                            PC=PC+ soffset8-2;
+                            break;
+                        case 10:
+                            cout<< "BGE\t"<< soffset8<<endl;
+                            PC=PC+ soffset8-2;
+                            break;
+                        case 11 :
+                            cout<< "BLT\t"<< soffset8<<endl;
+                            PC=PC+ soffset8-2;
+                            break;
+                        case 12:
+                            cout<< "BGT\t"<< soffset8<<endl;
+                            PC=PC+ soffset8-2;
+                            break;
+                        case 13:
+                            cout<< "BLE\t"<< soffset8<<endl;
+                            PC=PC+ soffset8-2;
+                            break;
+                    }
                 }
             }
         }
-    }
 }
 //----------------------------------------------------------
 void format18_19(unsigned short instr)
@@ -752,18 +793,16 @@ void format18_19(unsigned short instr)
     unsigned int temp = (instr>>12)&0x1;
     if(temp==0)
     {
-        cout << "B\t" <<offset11;
+        cout << "B\t" <<offset11<<endl;
         PC = PC + (offset11 << 1);
-        cout<<"\t\t\t---> PC= "<< PC <<endl;
     }
     else//format 19
     {
         H=(instr>>11)&0x1;
         if(H==0)
         {
-            cout << "BL\t"<<offset11;
+            cout << "BL\t"<<offset11<<endl;
             LR = (offset11<<12)+PC;
-            cout<<"\t\t\t---> LR= "<< LR <<endl;
         }
         else
         {
@@ -775,3 +814,38 @@ void format18_19(unsigned short instr)
     }
 }
 //----------------------------------------------------------
+void concat(unsigned int N, unsigned int Z, unsigned int C, unsigned int V)
+//https://www.geeksforgeeks.org/how-to-concatenate-two-integer-values-into-one/
+{
+    string s1 = to_string(N);
+    string s2 = to_string(Z);
+    string s3 = to_string(C);
+    string s4 = to_string(V);
+    
+    string s_first = s1 + s2;
+    string s_second = s3 + s4;
+    string s_final = s_first + s_second;
+    
+    cond = stoi(s_final);
+}
+void set_flags(unsigned int cpsr)
+{// NZCV = COND
+    if(cpsr<0) // Negative Flag
+        N=1;
+    else N = 0;
+    
+    if(cpsr==0) // Zero Flag
+        Z=1;
+    else Z = 0;
+    
+    if(cpsr>255) // Carry-unsigned overflow flag
+        C=1;
+    else C = 0;
+    
+    if(cpsr>127 | cpsr<-127) // Signed overflow flag
+        V=1;
+    else V = 0;
+    concat(N,Z,C,V);
+    
+}
+
